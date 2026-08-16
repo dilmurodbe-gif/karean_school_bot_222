@@ -60,7 +60,6 @@ async def admin_books_start(message: Message):
     rows = get_book_sections()
 
     kb = InlineKeyboardMarkup(inline_keyboard=[])
-
     for section in rows[:40]:
 
         kb.inline_keyboard.append([

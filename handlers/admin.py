@@ -139,6 +139,27 @@ async def approve_payment_callback(
         "✅ Premium faollashtirildi!"
     )
 
+def referral_admin_keyboard(request_id: int):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Premium berish",
+                    callback_data=(
+                        f"ref_premium_approve:{request_id}"
+                    )
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❌ Rad etish",
+                    callback_data=(
+                        f"ref_premium_reject:{request_id}"
+                    )
+                )
+            ]
+        ]
+    )
 
 @router.callback_query(F.data.startswith("payment_reject:"))
 async def reject_payment_callback(

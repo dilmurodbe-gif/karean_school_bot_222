@@ -40,6 +40,45 @@ def init_db():
             )
         """)
 
+                # ====================================================
+        # REFERRAL TIZIMI
+        # ====================================================
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS referrals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                referrer_id INTEGER NOT NULL,
+                referred_id INTEGER NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+
+                FOREIGN KEY (referrer_id)
+                    REFERENCES users(user_id),
+
+                FOREIGN KEY (referred_id)
+                    REFERENCES users(user_id)
+            )
+        """)
+
+                cur.execute("""
+            CREATE TABLE IF NOT EXISTS referral_premium_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                referral_count INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL,
+                reviewed_at TEXT,
+                reviewed_by INTEGER,
+
+                FOREIGN KEY (user_id)
+                    REFERENCES users(user_id)
+            )
+        """)
+
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_referrals_referrer
+            ON referrals(referrer_id)
+        """)
+
         # ====================================================
         # PREMIUM FOYDALANUVCHILAR
         # ====================================================
@@ -1712,6 +1751,310 @@ def get_book_sections_count():
         """)
 
         return cur.fetchone()[0]
+
+    finally:
+        conn.close()
+
+# ============================================================
+# REFERRAL TIZIMI
+# ============================================================
+
+def add_referral(
+    referrer_id: int,
+    referred_id: int
+) -> bool:
+    """
+    Yangi referral qo'shadi.
+
+    True  -> referral muvaffaqiyatli qo'shildi
+    False -> user oldin referral sifatida hisoblangan
+    """
+
+    if referrer_id == referred_id:
+        return False
+
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        # Bu user oldin referral orqali hisoblanganmi?
+        cur.execute("""
+            SELECT id
+            FROM referrals
+            WHERE referred_id=?
+            LIMIT 1
+        """, (referred_id,))
+
+        if cur.fetchone():
+            return False
+
+        # Referral egasi mavjudligini tekshirish
+        cur.execute("""
+            SELECT user_id
+            FROM users
+            WHERE user_id=?
+            LIMIT 1
+        """, (referrer_id,))
+
+        if not cur.fetchone():
+            return False
+
+        cur.execute("""
+            INSERT INTO referrals (
+                referrer_id,
+                referred_id,
+                created_at
+            )
+            VALUES (?, ?, ?)
+        """, (
+            referrer_id,
+            referred_id,
+            datetime.now().isoformat()
+        ))
+
+        conn.commit()
+
+        return True
+
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return False
+
+    finally:
+        conn.close()
+
+
+def get_referral_count(user_id: int) -> int:
+    """
+    Foydalanuvchi nechta yangi odam olib kelganini qaytaradi.
+    """
+
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT COUNT(*)
+            FROM referrals
+            WHERE referrer_id=?
+        """, (user_id,))
+
+        return cur.fetchone()[0]
+
+    finally:
+        conn.close()
+
+
+def get_referred_users(user_id: int):
+    """
+    Foydalanuvchi orqali kirgan barcha userlarni qaytaradi.
+    """
+
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT
+                users.user_id,
+                users.first_name,
+                users.username,
+                referrals.created_at
+            FROM referrals
+            INNER JOIN users
+                ON users.user_id = referrals.referred_id
+            WHERE referrals.referrer_id=?
+            ORDER BY referrals.id ASC
+        """, (user_id,))
+
+        return cur.fetchall()
+
+    finally:
+        conn.close()
+
+
+def get_referrer_by_referred_id(referred_id: int):
+    """
+    Ushbu user kimning referral linki orqali
+    kelganini aniqlaydi.
+    """
+
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT referrer_id
+            FROM referrals
+            WHERE referred_id=?
+            LIMIT 1
+        """, (referred_id,))
+
+        row = cur.fetchone()
+
+        if not row:
+            return None
+
+        return row["referrer_id"]
+
+    finally:
+        conn.close()
+
+
+def has_referral_request(user_id: int) -> bool:
+    """
+    Premium referral arizasi oldin yuborilganmi?
+    """
+
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT id
+            FROM referral_premium_requests
+            WHERE user_id=?
+              AND status='pending'
+            LIMIT 1
+        """, (user_id,))
+
+        return cur.fetchone() is not None
+
+    finally:
+        conn.close()
+
+
+def create_referral_premium_request(user_id: int) -> int | None:
+    """
+    Premium referral arizasini yaratadi.
+    """
+
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        # Oldin pending ariza bormi?
+        cur.execute("""
+            SELECT id
+            FROM referral_premium_requests
+            WHERE user_id=?
+              AND status='pending'
+            LIMIT 1
+        """, (user_id,))
+
+        if cur.fetchone():
+            return None
+
+        cur.execute("""
+            INSERT INTO referral_premium_requests (
+                user_id,
+                referral_count,
+                status,
+                created_at
+            )
+            VALUES (?, ?, 'pending', ?)
+        """, (
+            user_id,
+            get_referral_count(user_id),
+            datetime.now().isoformat()
+        ))
+
+        request_id = cur.lastrowid
+
+        conn.commit()
+
+        return request_id
+
+    finally:
+        conn.close()
+
+
+def get_referral_premium_request(request_id: int):
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT
+                referral_premium_requests.*,
+                users.first_name,
+                users.username
+            FROM referral_premium_requests
+            INNER JOIN users
+                ON users.user_id = referral_premium_requests.user_id
+            WHERE referral_premium_requests.id=?
+        """, (request_id,))
+
+        return cur.fetchone()
+
+    finally:
+        conn.close()
+
+
+def approve_referral_premium_request(
+    request_id: int,
+    admin_id: int
+):
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute("""
+            UPDATE referral_premium_requests
+            SET
+                status='approved',
+                reviewed_at=?,
+                reviewed_by=?
+            WHERE id=?
+              AND status='pending'
+        """, (
+            datetime.now().isoformat(),
+            admin_id,
+            request_id
+        ))
+
+        conn.commit()
+
+        return cur.rowcount > 0
+
+    finally:
+        conn.close()
+
+
+def reject_referral_premium_request(
+    request_id: int,
+    admin_id: int
+):
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+
+        cur.execute("""
+            UPDATE referral_premium_requests
+            SET
+                status='rejected',
+                reviewed_at=?,
+                reviewed_by=?
+            WHERE id=?
+              AND status='pending'
+        """, (
+            datetime.now().isoformat(),
+            admin_id,
+            request_id
+        ))
+
+        conn.commit()
+
+        return cur.rowcount > 0
 
     finally:
         conn.close()

@@ -238,3 +238,19 @@ def referral_link_keyboard(
             ]
         ]
     )
+
+def referral_admin_keyboard(request_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Premium berish",
+                    callback_data=f"ref_premium_approve:{request_id}"
+                ),
+                InlineKeyboardButton(
+                    text="❌ Rad etish",
+                    callback_data=f"ref_premium_reject:{request_id}"
+                ),
+            ]
+        ]
+    )

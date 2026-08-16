@@ -9,6 +9,9 @@ def mode_menu():
                 KeyboardButton(text="💎 Premium")
             ],
             [
+                KeyboardButton(text="🎁 Do‘stlarni taklif qilish")
+            ],
+            [
                 KeyboardButton(text="ℹ️ Bot haqida")
             ],
             [
@@ -116,6 +119,25 @@ def admin_menu():
             ],
             [
                 KeyboardButton(text="🏠 Bo'lim tanlash")
+            ]
+        ],
+        resize_keyboard=True
+    )
+
+def referral_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text="👥 Men qo‘shgan odamlar")
+            ],
+            [
+                KeyboardButton(text="🔗 Referal linkim")
+            ],
+            [
+                KeyboardButton(text="👑 Premiumga ariza berish")
+            ],
+            [
+                KeyboardButton(text="🔙 Orqaga")
             ]
         ],
         resize_keyboard=True

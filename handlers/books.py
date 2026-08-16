@@ -53,21 +53,23 @@ def is_admin(user_id: int) -> bool:
 
 @router.message(F.text == "📚 Kitob qo‘shish")
 async def admin_books_start(message: Message):
-
+    
     if not is_admin(message.from_user.id):
         return
+        
+        rows = get_book_sections()
 
-    rows = get_book_sections()
+        kb = InlineKeyboardMarkup(inline_keyboard=[])
+    
+        for section in rows[:40]:
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[])
-    for section in rows[:40]:
-
-        kb.inline_keyboard.append([
+                    kb.inline_keyboard.append([
             InlineKeyboardButton(
                 text=f"📁 {section['title']}",
                 callback_data=f"bsec_{section['id']}"
             )
         ])
+            
 
     kb.inline_keyboard.append([
         InlineKeyboardButton(

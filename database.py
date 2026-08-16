@@ -59,7 +59,7 @@ def init_db():
             )
         """)
 
-         cur.execute("""
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS referral_premium_requests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,

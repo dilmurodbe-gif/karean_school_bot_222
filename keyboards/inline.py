@@ -214,3 +214,27 @@ def confirm_delete_lesson_keyboard(lesson_id: int):
             ]
         ]
     )
+
+def referral_link_keyboard(
+    referral_link: str
+):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📋 Linkni nusxalash",
+                    url=referral_link
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📤 Ulashish",
+                    url=(
+                        "https://t.me/share/url"
+                        f"?url={referral_link}"
+                        "&text=Korean%20School%20Bot%20ga%20qo%27shiling!"
+                    )
+                )
+            ]
+        ]
+    )

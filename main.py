@@ -56,7 +56,7 @@ WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 # =========================================================
 
 bot = Bot(
-    token=BOT_TOKEN,
+    token= os.getenv("BOT_TOKEN"),
     default=DefaultBotProperties(
         parse_mode=ParseMode.HTML
     )

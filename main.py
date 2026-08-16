@@ -17,7 +17,7 @@ from database import init_db
 # ============================================================
 # HANDLERS
 # ============================================================
-
+from handlers.referral import router as referral_router
 from handlers.ai_teacher import router as ai_teacher_router
 from handlers.letters import router as letters_router
 from handlers.daily_grammar import router as daily_grammar_router
@@ -120,6 +120,9 @@ async def main():
     # ========================================================
     # ROUTERS
     # ========================================================
+
+    # REFERRAL
+    dp.include_router(referral_router)
 
     # START
     dp.include_router(start.router)
